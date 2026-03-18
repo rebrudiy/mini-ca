@@ -1,5 +1,7 @@
 # Отчёт: Мини-УЦ на основе OpenSSL
 
+**Исходный код:** [github.com/rebrudiy/mini-ca](https://github.com/rebrudiy/mini-ca)
+
 ## Обзор
 
 В данной работе моделируется инфраструктура открытых ключей (PKI), состоящая из трёх участников:
@@ -157,3 +159,46 @@ Verify return code: 0 (ok)
 Соединение установлено успешно — сертификат сервера подписан нашим Intermediate CA, который в свою очередь подписан Root CA из trust store клиента.
 
 ### 4. Отзыв сертификата
+
+#### Шаг 4.1 — Отзыв сертификата Intermediate CA
+
+```bash
+openssl ca -config $TMPCONF -revoke ca/intermediate.crt
+```
+- `ca -revoke` — отозвать сертификат, добавив запись в `index.txt`
+- `-config` — конфигурация CA (база данных, ключ, сертификат)
+- `ca/intermediate.crt` — отзываемый сертификат
+
+**Вывод:**
+```
+Adding Entry with serial number 33A2836E... to DB for /CN=Mini Intermediate CA/O=Mini CA/C=RU
+Revoking Certificate 33A2836E...
+Database updated
+```
+
+#### Шаг 4.2 — Генерация CRL
+
+```bash
+openssl ca -config $TMPCONF -gencrl -out ca/crl.pem
+```
+- `ca -gencrl` — сгенерировать список отозванных сертификатов
+- `-out ca/crl.pem` — файл назначения
+
+**Вывод:** команда выполнена без вывода, создан файл `ca/crl.pem`
+
+#### Шаг 4.3 — Повторное подключение к серверу (ожидаем отказ)
+
+```bash
+openssl s_client -connect localhost:4433 -CAfile client/root.crt -crl_check_all -CRL ca/crl.pem
+```
+- `-crl_check_all` — проверять CRL для всей цепочки сертификатов
+- `-CRL ca/crl.pem` — файл CRL для проверки
+
+**Вывод:**
+```
+verify error:num=3:unable to get certificate CRL
+verify error:num=23:certificate revoked
+Verification error: certificate revoked
+Verify return code: 23 (certificate revoked)
+```
+Соединение отклонено — Intermediate CA отозван, цепочка доверия нарушена.

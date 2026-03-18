@@ -5,4 +5,7 @@
 HOST=$1
 
 echo "=== Подключение к $HOST ==="
-openssl s_client -connect $HOST -CAfile client/root.crt 2>&1 | grep -E "Verify|error"
+openssl s_client -connect $HOST \
+  -CAfile client/root.crt \
+  -crl_check_all \
+  -CRL ca/crl.pem 2>&1 | grep -E "Verify return|error|revoked"
