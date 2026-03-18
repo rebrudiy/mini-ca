@@ -20,12 +20,14 @@ openssl req -new \
   -subj "/CN=Mini Intermediate CA/O=Mini CA/C=RU"
 
 # Step 5: Sign intermediate with root (5 years)
+# extfile adds CA:TRUE so OpenSSL recognizes it as a valid CA certificate
 openssl x509 -req -days 1825 \
   -in ca/intermediate.csr \
   -CA ca/root.crt \
   -CAkey ca/root.key \
   -CAcreateserial \
-  -out ca/intermediate.crt
+  -out ca/intermediate.crt \
+  -extfile <(echo -e "basicConstraints=CA:TRUE\nkeyUsage=keyCertSign,cRLSign")
 
 # Step 6: Initialize CA database
 touch ca/index.txt
